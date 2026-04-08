@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     MAX_FILE_SIZE_MB: int = 4000
     OPENAI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     MOCK_AI: bool = False
     AUTH_TOKEN: str = ""
 

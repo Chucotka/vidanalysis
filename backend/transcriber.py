@@ -1,6 +1,32 @@
+import os
+import tempfile
+import subprocess
+import glob
 import whisper
 import openai
 from backend.config import settings
+
+def _transcribe_chunks(client, model_name, chunk_files):
+    segments = []
+    for i, chunk_path in enumerate(sorted(chunk_files)):
+        with open(chunk_path, "rb") as extracted_audio:
+            response = client.audio.transcriptions.create(
+                model=model_name,
+                file=extracted_audio,
+                response_format="verbose_json",
+                timestamp_granularities=["segment"]
+            )
+
+        # Audio chunks are 10 minutes (600 seconds) each
+        time_offset = i * 600.0
+
+        for segment in response.segments:
+            segments.append({
+                "start": segment.start + time_offset,
+                "end": segment.end + time_offset,
+                "text": segment.text
+            })
+    return segments
 
 def transcribe_audio(video_path: str):
     if settings.MOCK_AI:
@@ -17,48 +43,43 @@ def transcribe_audio(video_path: str):
             {"start": 91.0, "end": 100.0, "text": "And so, the journey continues..."}
         ]
 
-    if settings.OPENAI_API_KEY:
-        try:
-            client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-            with open(video_path, "rb") as audio_file:
-                # Note: For large files, Whisper API limits to 25MB.
-                # In a real-world scenario, you might need to extract audio first and split it.
-                # For simplicity here we just send the file (assuming it's small enough or we accept failures).
-                # Actually, let's extract audio first to avoid sending large video files.
-                import tempfile
-                import subprocess
-                import os
+    chunk_dir = tempfile.mkdtemp()
 
-                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio:
-                    temp_audio_path = temp_audio.name
+    try:
+        # Extract and split audio into 10-minute chunks to stay under 25MB limits
+        chunk_pattern = os.path.join(chunk_dir, "chunk_%03d.mp3")
+        subprocess.run([
+            "ffmpeg", "-y", "-i", video_path,
+            "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k",
+            "-f", "segment", "-segment_time", "600",
+            chunk_pattern
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
-                subprocess.run([
-                    "ffmpeg", "-y", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", temp_audio_path
-                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        chunk_files = glob.glob(os.path.join(chunk_dir, "chunk_*.mp3"))
 
-                # Check size, if > 25MB, this simple implementation will fail, but handling chunking is out of scope for MVP
-                # unless strictly needed. We will proceed with the extracted audio.
+        if settings.GROQ_API_KEY:
+            try:
+                client = openai.OpenAI(
+                    base_url="https://api.groq.com/openai/v1",
+                    api_key=settings.GROQ_API_KEY
+                )
+                return _transcribe_chunks(client, "whisper-large-v3", chunk_files)
+            except Exception as e:
+                print(f"Groq API failed, falling back to OpenAI: {e}")
 
-                with open(temp_audio_path, "rb") as extracted_audio:
-                    response = client.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=extracted_audio,
-                        response_format="verbose_json",
-                        timestamp_granularities=["segment"]
-                    )
+        if settings.OPENAI_API_KEY:
+            try:
+                client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+                return _transcribe_chunks(client, "whisper-1", chunk_files)
+            except Exception as e:
+                print(f"OpenAI Whisper API failed, falling back to local: {e}")
 
-                os.remove(temp_audio_path)
-
-                segments = []
-                for segment in response.segments:
-                    segments.append({
-                        "start": segment.start,
-                        "end": segment.end,
-                        "text": segment.text
-                    })
-                return segments
-        except Exception as e:
-            print(f"OpenAI Whisper API failed, falling back to local: {e}")
+    except Exception as e:
+        print(f"API processing failed: {e}")
+    finally:
+        for f in glob.glob(os.path.join(chunk_dir, "*")):
+            os.remove(f)
+        os.rmdir(chunk_dir)
 
     # Fallback to local whisper
     model = whisper.load_model("base")

@@ -22,6 +22,7 @@ services:
       - STORAGE_PATH=/app/storage
       - MAX_FILE_SIZE_MB=4000
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
       - MOCK_AI=${MOCK_AI:-false}
     volumes:
       - ./storage:/app/storage
@@ -39,6 +40,7 @@ services:
       - STORAGE_PATH=/app/storage
       - MAX_FILE_SIZE_MB=4000
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
       - MOCK_AI=${MOCK_AI:-false}
     volumes:
       - ./storage:/app/storage
