@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+aiosqlite
+celery
+redis
+python-multipart
+openai
+yt-dlp
+scenedetect[opencv]
+openai-whisper
+apscheduler
+pydantic
+pydantic-settings

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_PATH=/app/storage
+      - MAX_FILE_SIZE_MB=4000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MOCK_AI=${MOCK_AI:-false}
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: celery -A backend.tasks worker --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_PATH=/app/storage
+      - MAX_FILE_SIZE_MB=4000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MOCK_AI=${MOCK_AI:-false}
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      - redis
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
