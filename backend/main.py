@@ -51,7 +51,7 @@ async def cleanup_old_files():
         # We can just iterate over the storage dir and check file ages.
         pass
 
-    for root, dirs, files in os.walk(settings.STORAGE_PATH):
+    for root, dirs, files in os.walk(settings.STORAGE_PATH, topdown=False):
         for file in files:
             if file == "cinetimecode.db" or file.endswith("-journal"):
                 continue
@@ -63,6 +63,15 @@ async def cleanup_old_files():
             except Exception as e:
                 print(f"Error deleting file {path}: {e}")
 
+        for d in dirs:
+            dir_path = os.path.join(root, d)
+            try:
+                if not os.listdir(dir_path):
+                    os.rmdir(dir_path)
+                    print(f"Deleted empty directory: {dir_path}")
+            except Exception as e:
+                print(f"Error deleting directory {dir_path}: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     await init_db()
@@ -71,10 +80,23 @@ async def startup_event():
 
 @app.post("/api/analyze", dependencies=[Depends(verify_auth_token)])
 async def analyze_video(
-    file: UploadFile = File(None),
-    video_url: str = Form(None),
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ):
+    content_type = request.headers.get("content-type", "")
+    file = None
+    video_url = None
+
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        file = form.get("file")
+        video_url = form.get("video_url")
+    elif "application/json" in content_type:
+        body = await request.json()
+        video_url = body.get("url") or body.get("video_url")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid Content-Type")
+
     if not file and not video_url:
         raise HTTPException(status_code=400, detail="Must provide either file or video_url")
 
@@ -82,7 +104,7 @@ async def analyze_video(
     video_path = ""
     original_filename = ""
 
-    if file:
+    if file and hasattr(file, "filename"):
         original_filename = file.filename
         ext = os.path.splitext(original_filename)[1]
         video_path = os.path.join(settings.STORAGE_PATH, f"{job_id}{ext}")
@@ -216,7 +238,7 @@ async def export_timecodes(job_id: str, format: str = "json", db: AsyncSession =
     elif format == "txt":
         output = ""
         for tc in data:
-            output += f"[{tc['start']}] {tc['type']} - {tc['description']}\n"
+            output += f"{tc['start']} {tc['type']} - {tc['description']}\n"
         response = StreamingResponse(iter([output]), media_type="text/plain")
         response.headers["Content-Disposition"] = f"attachment; filename=chapters_{job_id}.txt"
         return response

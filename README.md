@@ -42,8 +42,8 @@ docker-compose up --build
 
 ## Estimated Processing Time
 
-- Processing takes roughly 15-30% of the video duration depending on scene density and hardware.
-- E.g., 1 hour video -> ~10-20 minutes.
+- ~2-3 minutes per 10 minutes of video with API mode (OpenAI Whisper + GPT-4o)
+- ~5-8 minutes per 10 minutes of video with local Whisper fallback on CPU.
 
 ## Example Timecode Output
 
@@ -68,6 +68,16 @@ docker-compose up --build
     "description": "Two figures dart between the trees, their faces obscured by the fog.",
     "dialogue_excerpt": "Hurry, they're catching up!",
     "thumbnail_url": "/api/jobs/123/thumbnail/2"
+  },
+  {
+    "start": "00:00:45",
+    "end": "00:01:20",
+    "duration": 35.0,
+    "scene_number": 3,
+    "type": "DIALOGUE",
+    "description": "The figures stop running and catch their breath behind a large boulder, whispering to each other.",
+    "dialogue_excerpt": "Do you think we lost them?",
+    "thumbnail_url": "/api/jobs/123/thumbnail/3"
   }
 ]
 ```

@@ -5,8 +5,16 @@ from backend.config import settings
 def transcribe_audio(video_path: str):
     if settings.MOCK_AI:
         return [
-            {"start": 0.0, "end": 15.0, "text": "Hurry, they're catching up!"},
-            {"start": 16.0, "end": 30.0, "text": "I can't go any faster!"}
+            {"start": 0.0, "end": 10.0, "text": "Hurry, they're catching up!"},
+            {"start": 11.0, "end": 20.0, "text": "I can't go any faster!"},
+            {"start": 21.0, "end": 30.0, "text": "We have to hide in there."},
+            {"start": 31.0, "end": 40.0, "text": "Quiet! They are right outside."},
+            {"start": 41.0, "end": 50.0, "text": "Did you hear that explosion?"},
+            {"start": 51.0, "end": 60.0, "text": "Yeah, it came from the north."},
+            {"start": 61.0, "end": 70.0, "text": "I love you. I know."},
+            {"start": 71.0, "end": 80.0, "text": "Hahaha, that was hilarious!"},
+            {"start": 81.0, "end": 90.0, "text": "We need to talk about what happened."},
+            {"start": 91.0, "end": 100.0, "text": "And so, the journey continues..."}
         ]
 
     if settings.OPENAI_API_KEY:

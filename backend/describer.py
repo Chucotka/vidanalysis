@@ -5,10 +5,15 @@ from backend.config import settings
 
 def describe_scene(image_path: str, context: str):
     if settings.MOCK_AI:
+        # Generate a varied mock tag based on the image path hash to be deterministic but varied
+        tags = ["ACTION", "DIALOGUE", "CHASE", "EXPLOSION", "ROMANCE", "COMEDY", "DRAMA", "TRANSITION", "MONTAGE", "CREDITS"]
+        import hashlib
+        h = int(hashlib.md5(image_path.encode()).hexdigest(), 16)
+        tag = tags[h % len(tags)]
         return {
-            "description": "A slow fade into a quiet, misty forest. No one is speaking.",
-            "tag": "TRANSITION",
-            "mood": "tense"
+            "description": f"Mock description for a scene classified as {tag}. Visually, characters are engaged in a {tag.lower()} sequence.",
+            "tag": tag,
+            "mood": "varied"
         }
 
     if not settings.OPENAI_API_KEY:

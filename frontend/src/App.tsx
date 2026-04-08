@@ -330,6 +330,16 @@ export default function App() {
                   />
                 )}
               </div>
+
+              {/* Legend */}
+              <div className="bg-surface px-4 py-3 border-t border-surface-hover flex flex-wrap gap-2 text-[10px] items-center justify-center">
+                {Object.keys(tagColors).filter(t => t !== 'UNKNOWN').map(tag => (
+                  <div key={tag} className="flex items-center gap-1.5">
+                    <span className={cn("w-2.5 h-2.5 rounded-sm inline-block", tagColors[tag])} />
+                    <span className="text-text-muted">{tag}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Right Panel: Timecodes */}

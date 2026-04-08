@@ -31,7 +31,17 @@ async def analyze_video_pipeline(job_id: str, video_path: str, video_url: str = 
             }
             # Run yt-dlp in a separate thread so it doesn't block the async loop
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, lambda: _download_video(ydl_opts, video_url))
+            try:
+                await loop.run_in_executor(None, lambda: _download_video(ydl_opts, video_url))
+            except Exception as e:
+                # Cleanup partial downloads
+                if os.path.exists(video_path):
+                    os.remove(video_path)
+                for partial_ext in [".part", ".ytdl"]:
+                    partial_file = f"{video_path}{partial_ext}"
+                    if os.path.exists(partial_file):
+                        os.remove(partial_file)
+                raise Exception(f"Failed to download video: {e}")
 
         await update_job_progress(job_id, "processing", 10, "Detecting scenes...")
         scene_list = detect_scenes(video_path)
